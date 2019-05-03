@@ -72,21 +72,14 @@ end
 
 ### Getting the current user, restricting access, the usual
 
-Passwordless doesn't give you `current_user` automatically. Here's how you could add it:
+Passwordless generates methods for the current resource based on the class you provide to `passwordless_for`. For example; passing `Admin` to `passwordless_for` will generate a `current_admin` method for you to use in views/controllers.
 
 ```ruby
 class ApplicationController < ActionController::Base
   include Passwordless::ControllerHelpers # <-- This!
-
-  # ...
-
-  helper_method :current_user
+  passwordless_for User # <-- This as well!
 
   private
-
-  def current_user
-    @current_user ||= authenticate_by_cookie(User)
-  end
 
   def require_user!
     return if current_user
@@ -129,7 +122,8 @@ Because your `User` record is like any other record, you create one like you nor
 ```ruby
 class UsersController < ApplicationController
   include Passwordless::ControllerHelpers # <-- This!
-  # (unless you already have it in your ApplicationController)
+  passwordless_for User
+  # (unless you already have these in your ApplicationController)
 
   def create
     @user = User.new user_params
@@ -191,12 +185,13 @@ By default Passwordless will redirect back to where the user wanted to go **if**
 ```ruby
 class ApplicationController < ActionController::Base
   include Passwordless::ControllerHelpers # <-- Probably already have this!
+  passwordless_for User
 
   # ...
 
   def require_user!
     return if current_user
-    save_passwordless_redirect_location!(User) # <-- here we go!
+    save_passwordless_redirect_location! # <-- here we go!
     redirect_to root_path, flash: {error: 'You are not worthy!'}
   end
 end

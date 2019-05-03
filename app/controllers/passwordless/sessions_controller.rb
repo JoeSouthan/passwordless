@@ -6,6 +6,7 @@ module Passwordless
   # Controller for managing Passwordless sessions
   class SessionsController < ApplicationController
     include ControllerHelpers
+    before_action :setup_passwordless
 
     # get '/sign_in'
     #   Assigns an email_field and new Session to be used by new view.
@@ -39,16 +40,10 @@ module Passwordless
       # Make it "slow" on purpose to make brute-force attacks more of a hassle
       BCrypt::Password.create(params[:token])
 
-      session = find_session
-
-      session.claim! if Passwordless.restrict_token_reuse
-
-      raise Passwordless::Errors::SessionTimedOutError if session.timed_out?
-
-      sign_in session.authenticatable
+      sign_in passwordless_session
 
       redirect_enabled = Passwordless.redirect_back_after_sign_in
-      destination = reset_passwordless_redirect_location!(User)
+      destination = reset_passwordless_redirect_location!
 
       if redirect_enabled && destination
         redirect_to destination
@@ -72,6 +67,10 @@ module Passwordless
     end
 
     private
+
+    def setup_passwordless
+      self.class.passwordless_for(authenticatable_class) unless self.class.class_variable_defined?(:@@authenticatable_class)
+    end
 
     def authenticatable
       params.fetch(:authenticatable)
@@ -101,10 +100,10 @@ module Passwordless
       end
     end
 
-    def find_session
-      Session.find_by!(
+    def passwordless_session
+      @passwordless_session ||= Session.find_by!(
         authenticatable_type: authenticatable_classname,
-        token: params[:token]
+        token: params[:token],
       )
     end
   end
